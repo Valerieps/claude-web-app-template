@@ -6,7 +6,9 @@
 
 Este repositório é um template para apps web construídos com o Claude Code: Vite + React +
 TypeScript, testes com Vitest, CI no GitHub Actions e deploy no Cloudflare Pages, com as docs
-organizadas para o Claude ler só o que precisa.
+organizadas para o Claude ler só o que precisa. Os dados ficam no navegador; para um app de grupo,
+com servidor e login com Google, use o
+[claude-web-app-cloudflare-template](https://github.com/Valerieps/claude-web-app-cloudflare-template).
 
 1. No GitHub, **Use this template > Create a new repository**.
 2. Clone o repositório novo e rode `npm ci`.
