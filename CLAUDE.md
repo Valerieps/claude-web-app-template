@@ -14,6 +14,8 @@ The owner edits docs between messages: re-read a doc before editing it and prese
 | Task | Read |
 | --- | --- |
 | Any code change | The hard rules below; `docs/SEGURANCA.md` when the change touches storage, network, dependencies or rendered user text |
+| Any change under `src/ui/` | The UI hard rules below; `docs/UI.md` when building or restyling a screen |
+| Critiquing the UI, or changing the visual identity | The `ui-review` or `visual-identity` skill in `.claude/skills/` |
 | Implementing or changing a feature | Its file in `docs/spec/` (the table in `docs/SPEC.md` says which); its rows in `docs/ROADMAP.md`; the ADRs found by grepping `docs/adr/` |
 | Changing the data model, events or migrations | `docs/ARQUITETURA.md` and the ADRs it cites |
 | Answering a product question or deciding a rule | The relevant file in `docs/spec/` and its "Em aberto"; `docs/GLOSSARIO.md` for the terms |
@@ -25,6 +27,14 @@ Hard rules from `docs/SEGURANCA.md`, valid for every change:
 - Never insert user text as HTML; links open with `target="_blank" rel="noopener noreferrer"`.
 - Minimize dependencies; pin exact versions; bundle them, never load from a CDN.
 - `network-policy.ts` is the only place that says which servers the app may talk to.
+
+UI hard rules from `docs/UI.md`, valid for every change under `src/ui/`
+(`src/ui/theme/tokens.test.ts` fails the build on the first four):
+- No literal color, length, duration, font size, weight or line height outside `src/ui/theme/tokens.css`, inline styles included. No fitting token: add one, never a literal.
+- Never rename a token or loosen `tokens.test.ts` to make it pass.
+- Font sizes only from the scale; spacing only from `--space-*`.
+- Every text color pair passes WCAG AA in both themes; a new pair goes into the test's list.
+- Use `src/ui/components/` (`Button`, `ButtonLink`, `Field`, `Notice`) before writing new CSS.
 
 ### Where information lives
 
@@ -40,6 +50,7 @@ wins: fix the other doc in the same change.
 | What is missing, where code lags behind the spec, what is deferred | `docs/ROADMAP.md` | Only what is NOT done. When something is built, its row leaves the roadmap; git and closed issues keep the history |
 | Technical design the code does not show | `docs/ARQUITETURA.md` | Invariants, the data model, the event flow and migrations. Not a tour of the files: the code shows that |
 | Technical decisions | `docs/adr/`, one file per decision | Each ADR has a `**Status:**` line and a unique number; there is no separate index. Find ADRs by grepping `docs/adr/` |
+| Interface rules (spacing, type, contrast, states, hierarchy) | `docs/UI.md` | Values live in `src/ui/theme/tokens.css`; `src/ui/theme/tokens.test.ts` enforces what can be checked |
 | Security rules | `docs/SEGURANCA.md` | Short; enforced by `src/security.test.ts` wherever a rule can be tested |
 | Feature requests not yet decided | GitHub issues, `t:enhancement` + a size label | When decided: rule to `docs/spec/`, row to `docs/ROADMAP.md`, issue closed |
 | Bugs, technical debt, known limitations, checks only the owner can do | GitHub issues, `t:bug` or `t:debito-tecnico` + a priority (`p:`) + a size (`s:`) | Close the issue when resolved; open one when you knowingly leave something behind |
@@ -61,7 +72,10 @@ Product docs are written in Brazilian Portuguese; ADRs, code and this file in En
 - Business-rule questions found during a task go in one batch, before implementing.
 - When she asks what you think of the app, she wants a frank assessment, including the risks.
 - Verify with the typecheck and unit tests; use the browser only when she asks.
-- Merge your own PR once its build passes.
+- Ship with `npm run ship -- "<commit message>"`: it commits, opens the PR, turns on auto-merge and
+  waits until GitHub merges it. Do not run the `gh pr` steps by hand or poll with `sleep`.
+- Asked whether everything is merged or the session can be archived: run `npm run branches` and
+  report its answer.
 
 ### Fewer rounds, fewer tokens
 Each step rereads the whole conversation, so long sessions and back-and-forth cost the most.
@@ -85,30 +99,40 @@ Each step rereads the whole conversation, so long sessions and back-and-forth co
 ## Architecture Overview
 - Clean Architecture + Domain Driven Design (DDD).
 - <BOOTSTRAP.md: where data lives (e.g. IndexedDB, local-only) and what talks to what.>
+- Static files served by a Cloudflare Worker with no server code (ADR-004); a generated service
+  worker keeps the installed app usable offline (ADR-005).
 
 ## Project Layout
-- `src/domain` - entities and rules. Pure TypeScript, no framework imports.
+- `src/domain` - entities and rules. Pure TypeScript, no framework imports. `strings.ts` holds every UI text.
 - `src/application` - use cases and ports (interfaces the infrastructure implements).
-- `src/infrastructure` - storage, browser APIs and, if `network-policy.ts` allows it, network calls.
-- `src/ui` - React components. All colors, fonts and spacing live in `src/ui/theme/tokens.css`.
-- `public/` - static files: manifest, icons, Cloudflare `_headers`.
+- `src/infrastructure` - storage, browser APIs (the service worker registration) and, if `network-policy.ts` allows it, network calls.
+- `src/ui` - React components. All colors, fonts, sizes and spacing live in `src/ui/theme/tokens.css`; shared components in `src/ui/components/`.
+- `public/` - static files: manifest, icons, `_headers`.
 - `network-policy.ts` - the servers the app may talk to; empty means local-only.
-- `scripts/` - `check-docs.mjs` (run by CI) and `setup-repo.mjs` (once per new repository).
+- `service-worker-source.ts` - the offline service worker; the build writes it to `dist/sw.js` (ADR-005).
+- `wrangler.jsonc` - the Worker that serves `dist/` (ADR-004).
+- `scripts/` - `check-docs.mjs` (run by CI) and `setup-repo.mjs` (once per new repository), `ship.mjs` and `branches.mjs` (see Commands).
 
 ## Commands
 - `npm ci` - install exactly what the lockfile pins
 - `npm run dev` - dev server (no CSP)
 - `npm test` - unit tests, including `src/security.test.ts`
-- `npm run build` - typecheck, unit tests, and production build into `dist/` (CSP injected); a failing test stops the deploy
-- `npm run preview` - serve the production build locally
+- `npm run build` - typecheck, unit tests, production build into `dist/` (CSP injected, `sw.js` written) and a Worker deploy dry run; a failing test stops the deploy
+- `npm run preview` - serve the built `dist/` with the Worker locally, as in production (run `npm run build` first)
+- `npm run deploy` - deploy the Worker (normally Workers Builds does it from `main`)
 - `npm run docs:check` - broken links between docs, ADRs without a status, repeated ADR numbers
+- `npm run ship -- "<message>"` - commit, push, open the PR, auto-merge and wait for the merge; `--no-wait` stops after auto-merge is on
+- `npm run branches` - what is not merged yet, per branch and worktree; `-- --clean` deletes merged local branches
 
 ## Deployment
-Cloudflare Pages, from the GitHub repository. Build command `npm run build`, output directory
-`dist`. GitHub Actions (`.github/workflows/ci.yml`) runs the same build and the docs check on every
+Production address: `https://<BOOTSTRAP.md: worker name>.souza.pereira.valeria.workers.dev` (the
+Worker's `name` in `wrangler.jsonc`, on the owner's account subdomain).
+Cloudflare Workers Builds, from the GitHub repository (ADR-004). Build command `npm run build`,
+deploy command `npx wrangler deploy` for `main`; other branches upload a preview version with
+`npx wrangler versions upload`. GitHub Actions (`.github/workflows/ci.yml`) runs the same build and the docs check on every
 pull request. Branch protection on `main` requires the `build` check and a branch up to date with
-`main` (ADR-003): wait with `gh pr checks <n> --watch`, and if the merge is refused because the
-branch is behind, bring it up to date and wait again. No direct pushes to `main`. No `dev` branch:
+`main` (ADR-003): `npm run ship` waits for that check and brings a branch that fell behind up to
+date by itself. No direct pushes to `main`. No `dev` branch:
 each branch's Cloudflare preview is the staging.
 
 ## Code Conventions

@@ -1,0 +1,14 @@
+// Cloudflare Worker that serves the built app from dist/ as static assets, with no server code
+// (ADR-004). The headers come from public/_headers. The app's address is
+// https://<name>.souza.pereira.valeria.workers.dev (BOOTSTRAP.md).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "app-name",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  // No Wrangler usage telemetry from builds or CI (docs/SEGURANCA.md).
+  "send_metrics": false
+}

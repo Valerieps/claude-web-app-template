@@ -14,6 +14,8 @@ O `BOOTSTRAP.md` escolhe um dos dois casos da seção 1 e apaga o outro.
 ### Caso A: local-only
 
 - O app não faz nenhuma chamada de rede: `network-policy.ts` fica vazio e a CSP tem `connect-src 'none'`.
+  A única exceção é o service worker, que busca os arquivos do próprio app para funcionar offline
+  (ADR-005).
 - Os dados ficam só no navegador. Backups vão para arquivos locais que a pessoa escolhe, nunca para um servidor.
 - Sem analytics, telemetria, relatórios de erro remotos nem login.
 
@@ -30,4 +32,6 @@ O `BOOTSTRAP.md` escolhe um dos dois casos da seção 1 e apaga o outro.
 - Links abrem com `target="_blank" rel="noopener noreferrer"`.
 - Dependências mínimas, com versões exatas, instaladas com `npm ci` e empacotadas no build; nada de CDN.
 - A CSP é injetada no build de produção (ADR-002) e os cabeçalhos ficam em `public/_headers`.
+- O service worker só responde a GETs da própria origem e nunca guarda o que vem de outra (ADR-005).
+- O Wrangler roda com `send_metrics: false`: o build não manda telemetria para o Cloudflare.
 - Nenhum dado pessoal vai para a URL.
