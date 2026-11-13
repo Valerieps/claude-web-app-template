@@ -1,4 +1,4 @@
-# Cloudflare Pages response headers.
+# Response headers, read by Cloudflare Workers static assets (ADR-004).
 # The Content-Security-Policy lives in index.html (meta tag, injected by the production build) so
 # it applies to the page only: as a header it would also apply to a service worker (ADR-002).
 /*

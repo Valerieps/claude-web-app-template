@@ -5,8 +5,9 @@
 ## Usar o template
 
 Este repositório é um template para apps web construídos com o Claude Code: Vite + React +
-TypeScript, testes com Vitest, CI no GitHub Actions e deploy no Cloudflare Pages, com as docs
-organizadas para o Claude ler só o que precisa. Os dados ficam no navegador; para um app de grupo,
+TypeScript, testes com Vitest, CI no GitHub Actions e deploy pelo Cloudflare Workers Builds, com as
+docs organizadas para o Claude ler só o que precisa. Os dados ficam no navegador, o app é instalável
+e abre sem internet (um service worker guarda os arquivos); para um app de grupo,
 com servidor e login com Google, use o
 [claude-web-app-cloudflare-template](https://github.com/Valerieps/claude-web-app-cloudflare-template).
 
@@ -25,7 +26,9 @@ npm ci
 npm run dev
 ```
 
-`npm test` roda os testes, `npm run build` gera o build de produção em `dist/`.
+`npm test` roda os testes, `npm run build` gera o build de produção em `dist/` e `npm run preview`
+serve esse build como em produção (é onde o modo offline funciona; o `npm run dev` não tem service
+worker).
 
 ## Onde está cada coisa
 
@@ -34,3 +37,7 @@ npm run dev
 - `docs/ROADMAP.md`: o que falta.
 - `docs/adr/`: as decisões técnicas.
 - `docs/SEGURANCA.md`: as regras de segurança.
+- `docs/UI.md`: as regras de interface. Os valores (cores, fontes, espaços) ficam em
+  `src/ui/theme/tokens.css`, e o `npm test` confere as regras automáticas.
+- `.claude/skills/`: `visual-identity` (criar ou mudar a identidade visual) e `ui-review`
+  (criticar a interface sem repetir o que o teste já confere).
